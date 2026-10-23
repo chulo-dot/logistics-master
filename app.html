@@ -1028,6 +1028,22 @@ body{font-weight:400}
 .upload-zone.loaded{border:1px solid var(--green);background:rgba(16,185,129,.05)}
 .upload-zone.loaded .uz-label{color:var(--green);display:inline-block;justify-self:start;padding:1px 8px;border-radius:999px;background:rgba(16,185,129,.12);font-weight:500}
 .upload-zone.loaded .uz-hint{display:none}
+/* === Soft palette + roomier tiles === */
+:root{--st-ok:#6fb9ae;--st-warn:#e8b95a;--st-crit:#e5907f}
+.tile.s-ok{background:#8fcfc4!important}
+.tile.s-warn{background:#f1d28f!important}
+.tile.s-crit{background:#eea797!important}
+.tile.s-na{background:#c3ceda!important}
+.tile{padding:.55rem .65rem;gap:.25rem}
+.tile.s-ok,.tile.s-warn,.tile.s-crit,.tile.s-na,.tile-others{color:#1e293b;text-shadow:none}
+.tile .tn{font-weight:700;letter-spacing:.005em}
+.tile .tv{font-weight:400;opacity:.7}
+.tile.sel{outline-color:#1e293b}
+.tile .tc{background:#d4614d;box-shadow:0 0 0 .12rem rgba(212,97,77,.3)}
+.pin-cluster{color:#1e293b}
+.age-ok{background:rgba(111,185,174,.18);color:#3f9a8c}
+.age-warn{background:rgba(232,185,90,.2);color:#b9801a}
+.age-crit{background:rgba(229,144,127,.2);color:#d4614d}
 </style>
 </head>
 <body>
@@ -2476,7 +2492,7 @@ function renderTreemap(){
   const max = gs[0].v, names = all.map(g => String(g.key)).sort(), rects = squarify(gs, 0, 0, W, H);
   el.innerHTML = rects.map(t => {
     const g = t.it, rel = Math.sqrt(g.v / max), hue = TM_HUES[names.indexOf(String(g.key)) % TM_HUES.length];
-    const col = `hsl(${hue} ${46 + 24 * rel}% ${43 - 9 * rel}%)`, iw = t.w - 8, ih = t.h - 6;
+    const col = `hsl(${hue} ${46 + 24 * rel}% ${43 - 9 * rel}%)`, iw = t.w - 20, ih = t.h - 16;
     // font grows with the box: ~15% of the box's "diameter", between 7 and 24 px; shrinks / abbreviates until the name fits
     const fit = (txt, f) => txt.length * f * .6 <= iw * (ih > f * 4.2 ? 2 : 1);
     let name = String(g.key), fs = Math.max(7, Math.min(24, Math.sqrt(t.w * t.h) * .15));
@@ -3761,7 +3777,7 @@ function psConfirmImport(){
     const R = el.getBoundingClientRect();
     tiles.forEach(t => { const s = sev(oldest(t)); t.classList.add('s-' + s); t.dataset.sev = s; t.setAttribute('aria-label', (t.title || '').split('\n')[0]);
       const n = t.querySelector('.tn'); if(n){ let f = parseFloat(n.style.fontSize) || 12, i = 0; while(n.scrollHeight > n.clientHeight + 1 && f > 8 && i++ < 8) n.style.fontSize = (f -= 1) + 'px'; } });
-    const tiny = tiles.filter(t => { const b = t.getBoundingClientRect(); return b.width * b.height < 3600 || b.width < 46 || b.height < 30; });
+    const tiny = tiles.filter(t => { if(t.classList.contains('sel')) return false; const b = t.getBoundingClientRect(); return b.width * b.height < 3600 || b.width < 46 || b.height < 30; });
     if(tiny.length < 2) return;
     let x0 = 1e9, y0 = 1e9, x1 = 0, y1 = 0;
     tiny.forEach(t => { const b = t.getBoundingClientRect(); x0 = Math.min(x0, b.left); y0 = Math.min(y0, b.top); x1 = Math.max(x1, b.right); y1 = Math.max(y1, b.bottom); t.classList.add('tm-hid'); });
@@ -3769,6 +3785,7 @@ function psConfirmImport(){
     o.className = `tile tile-others s-${s}`; o.dataset.others = '1'; o.setAttribute('aria-expanded', 'false'); o.title = `${tiny.length} small items — click to list`;
     Object.assign(o.style, {left:(x0 - R.left) / R.width * 100 + '%', top:(y0 - R.top) / R.height * 100 + '%', width:(x1 - x0) / R.width * 100 + '%', height:(y1 - y0) / R.height * 100 + '%'});
     o.innerHTML = `Others<br><small>+${tiny.length}</small>`; el.appendChild(o);
+    if(tiles.some(t => t.classList.contains('sel'))) o.classList.add('dim');
     o.addEventListener('click', e => { e.stopPropagation(); const ex = el.querySelector('.tm-pop'); if(ex){ ex.remove(); o.setAttribute('aria-expanded', 'false'); return; }
       const p = document.createElement('div'); p.className = 'tm-pop'; o.setAttribute('aria-expanded', 'true');
       p.innerHTML = `<h4>Others · ${tiny.length} small items</h4>` + tiny.map(t => { const l = (t.title || '').split('\n');
