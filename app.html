@@ -1394,6 +1394,8 @@ body{font-weight:400}
         <input class="finp w" id="cnUrl" placeholder="https://xxxxxxxx.supabase.co">
         <input class="finp w" id="cnKey" placeholder="anon public key">
         <div class="tools"><button class="btn btn-primary btn-sm" onclick="saveConn()">Save &amp; connect</button><button class="btn btn-sm" style="color:var(--red)" onclick="disconnectConn()">Disconnect (local mode)</button></div>
+        <div class="tools" style="margin-top:6px"><button class="btn btn-sm" onclick="runDiagnostics()">🩺 Run diagnostics</button><button class="btn btn-sm" onclick="resetConn()">Use built-in connection</button></div>
+        <pre id="diagOut" style="display:none;margin-top:8px;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);font:10.5px/1.6 var(--mono);white-space:pre-wrap;max-height:320px;overflow:auto;user-select:text"></pre>
       </div>
     </div>
   </div>
@@ -3119,7 +3121,12 @@ const effRole = () => cloud.viewAs || cloud.role;
 const canWriteCloud = () => !!(cloud.on && cloud.user && cloud.role === 'admin');
 const fmtTime = d => d ? d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
 const fmtDT = s => { if(!s) return '—'; const d = new Date(s); return d.toLocaleDateString('en-GB') + ' ' + fmtTime(d); };
-function sbCfg(){ const l = lsGet('lm_sb', null); return {url:(l && l.url) || SB_CONFIG.url, key:(l && l.key) || SB_CONFIG.anonKey}; }
+const APP_BUILD = 'v21 · fixed';
+// A connection saved in this browser only wins if it was entered on purpose (custom:true) or there is no built-in one.
+// Old saved URLs/keys (from a previous project or key) used to silently override the built-in config → wrong/empty data.
+function sbCfg(){ const l = lsGet('lm_sb', null), useSaved = l && l.url && l.key && (l.custom === true || !SB_CONFIG.url);
+  return useSaved ? {url:l.url, key:l.key} : {url:SB_CONFIG.url, key:SB_CONFIG.anonKey}; }
+function resetConn(){ lsSet('lm_sb', null); $('cnKey').value = ''; $('cnUrl').value = sbCfg().url || ''; toast('Using the built-in connection'); bootCloud(); }
 
 function setSyncState(s, msg){
   cloud.state = s;
@@ -3136,9 +3143,10 @@ function renderCloudMetrics(){
   $('cmDs').textContent = cloud.ds.orders ? '#' + cloud.ds.orders.id : '—';
   $('cmDisp').textContent = dispatchLog.length;
   $('dsInfo').innerHTML = cloud.on
-    ? (cloud.ds.orders ? `Orders: <b>${esc(cloud.ds.orders.file_name || '')}</b> · ${fmt(cloud.ds.orders.row_count)} rows<br>Pack size: <b>${esc(cloud.ds.pack ? cloud.ds.pack.file_name : '')}</b> · ${fmt(cloud.ds.pack ? cloud.ds.pack.row_count : 0)} rows<br>Published ${fmtDT(cloud.ds.orders.created_at)} by ${esc(cloud.ds.orders.uploaded_by_email || '—')}` : 'No master dataset published yet.')
+    ? (cloud.ds.orders ? `Orders: <b>${esc(cloud.ds.orders.file_name || '')}</b> · ${fmt(cloud.ds.orders.row_count)} rows<br>Pack size: <b>${esc(cloud.ds.pack ? cloud.ds.pack.file_name : '')}</b> · ${fmt(cloud.ds.pack ? cloud.ds.pack.row_count : 0)} rows<br>Published ${fmtDT(cloud.ds.orders.created_at)} by ${esc(cloud.ds.orders.uploaded_by_email || '—')}` + (() => { const d = Math.floor((Date.now() - new Date(cloud.ds.orders.created_at)) / 86400000);
+      return d >= 2 ? `<br><span style="color:var(--amber)">⚠ Published ${d} days ago — ages are counted from today, so old data looks overdue. Re-publish fresh files.</span>` : ''; })() : 'No master dataset published yet.')
     : 'Local mode — files stay in this browser. Connect Supabase to publish to all terminals.';
-  $('connStatus').innerHTML = cloud.on ? 'Connected to <b>' + esc(sbCfg().url) + '</b>' + (cloud.user ? ' as <b>' + esc(cloud.user.email) + '</b>' : '') : 'Not connected — the app is running in local mode (files stay in this browser). Paste your project URL and the public <b>anon</b> key from Supabase ▸ Project Settings ▸ API.';
+  $('connStatus').innerHTML = cloud.on ? 'Connected to <b>' + esc(sbCfg().url) + '</b>' + (cloud.user ? ' as <b>' + esc(cloud.user.email) + '</b>' : '') + ' · build ' + esc(APP_BUILD) : 'Not connected — the app is running in local mode (files stay in this browser). Paste your project URL and the public <b>anon</b> key from Supabase ▸ Project Settings ▸ API.';
 }
 function updatePublishBtn(){
   const ready = !!(lastRun.a && lastRun.a === rawA && lastRun.b === rawB && processed.length);
@@ -3229,16 +3237,21 @@ async function syncNow(manual){
       sb.from('dispatches').select('id,payload,created_by_email,created_at').order('created_at', {ascending:false}).limit(1000),
       sb.from('settings').select('key,value').neq('key','product_master'),
       sb.from('settings').select('updated_at').eq('key','product_master').maybeSingle()]);
-    for(const r of [mo, mp, dp, st, pmm]) if(r.error) throw r.error;
+    for(const r of [mo, mp]) if(r.error) throw r.error;                 // datasets are essential
+    const warn = [];                                                    // everything else degrades gracefully
+    if(dp.error)  warn.push('dispatch log: ' + dp.error.message);
+    if(st.error)  warn.push('settings: ' + st.error.message);
+    if(pmm.error) warn.push('product master: ' + pmm.error.message);
     cloud.latency = Math.round(performance.now() - t0);
     (st.data || []).forEach(s => { if(s.key === 'vehicles') applyVehicleSetting(s.value); });
     let pmChanged = false;                                    // product master: only downloaded when it changed (it is the big one)
     if(pmm.data && pmm.data.updated_at !== cloud.pmStamp){
-      const pr = await sb.from('settings').select('value').eq('key','product_master').single(); if(pr.error) throw pr.error;
-      pmApplyCloud(pr.data.value); cloud.pmStamp = pmm.data.updated_at; pmChanged = true;
-    } else if(!pmm.data && PM.size && canWriteCloud()) cloudSetPM();      // admin has a local master and the database has none yet → publish it
+      const pr = await sb.from('settings').select('value').eq('key','product_master').single();
+      if(pr.error) warn.push('product master download: ' + pr.error.message);
+      else { pmApplyCloud(pr.data.value); cloud.pmStamp = pmm.data.updated_at; pmChanged = true; }
+    } else if(!pmm.data && !pmm.error && PM.size && canWriteCloud()) cloudSetPM();      // admin has a local master and the database has none yet → publish it
     const psChanged = await syncPS();
-    dispatchLog = (dp.data || []).map(r => ({...r.payload, _dbid:r.id, by:r.created_by_email}));
+    if(!dp.error) dispatchLog = (dp.data || []).map(r => ({...r.payload, _dbid:r.id, by:r.created_by_email}));
     const nO = mo.data, nP = mp.data; let loaded = false;
     if(nO && nP && (!cloud.ds.orders || cloud.ds.orders.id !== nO.id || !cloud.ds.pack || cloud.ds.pack.id !== nP.id || !allOrders.length)){
       const [po, pp] = await Promise.all([fetchPayload(nO.id), fetchPayload(nP.id)]);
@@ -3247,12 +3260,13 @@ async function syncNow(manual){
       markLoadedDots(); runEngine();
     } else if((pmChanged || psChanged) && rawA && rawB) runEngine(true);
     else renderAll();
-    cloud.lastSync = new Date(); setSyncState('ok'); updatePublishBtn();
-    if(manual) toast('Synced ✓ ' + (loaded ? 'new master dataset loaded' : 'up to date'));
+    cloud.lastSync = new Date(); setSyncState('ok'); updatePublishBtn(); cloud.warn = warn;
+    if(warn.length){ console.warn('[sync] partial failure:', warn); $('syncPill').title = 'Partial sync — ' + warn.join(' | '); toast('⚠ Synced, but: ' + warn[0], 8000); }
+    else if(manual) toast('Synced ✓ ' + (loaded ? 'new master dataset loaded' : 'up to date'));
     else if(loaded) toast('📥 New master dataset received');
     else if(pmChanged) toast('📥 Product master updated');
     else if(psChanged) toast('📥 Pack size master updated');
-  }catch(e){ setSyncState('error', e.message || String(e)); if(manual) toast('Sync failed: ' + (e.message || e), 5000); }
+  }catch(e){ console.error('[sync] failed:', e); setSyncState('error', e.message || String(e)); if(manual) toast('Sync failed: ' + (e.message || e), 5000); }
   cloud.busy = false;
 }
 
@@ -3295,6 +3309,39 @@ async function cloudSetVehicles(){
   if(r.error) toast('⚠ Vehicle data not shared: ' + r.error.message, 5000); else toast('Vehicle master shared with all terminals');
 }
 
+
+// ── diagnostics: tells you exactly which layer is wrong (page version · browser cache · Supabase · data) ──
+async function runDiagnostics(){
+  const out = $('diagOut'), L = []; out.style.display = 'block';
+  const add = t => { L.push(t); out.textContent = L.join('\n'); };
+  const c = sbCfg(), saved = lsGet('lm_sb', null), page = decodeURIComponent(location.pathname.split('/').pop() || '(index)');
+  add('PAGE      ' + page + ' · build ' + APP_BUILD + '   ← if this is not the file you edit, you are looking at a stale copy');
+  add('PROJECT   ' + (c.url || '—') + (saved ? (saved.custom === true ? '  [custom connection saved in this browser]' : '  [old saved override ignored]') : '  [built-in]'));
+  add('LOCAL     product master ' + PM.size + ' · vehicles ' + vehicles.length + ' · pack master ' + (typeof PS !== 'undefined' ? PS.size : '?') + ' · dispatch log ' + dispatchLog.length + ' · order lines ' + (rawA ? rawA.length : 0));
+  if(!sb){ add('✗ Not connected (local mode, or the Supabase script did not load — check your internet / ad-blocker).'); return; }
+  const test = async (label, fn) => { const t0 = performance.now();
+    try{ const r = await fn(), ms = Math.round(performance.now() - t0);
+      if(r && r.error) add('✗ ' + label + ' — ' + (r.error.message || r.error) + (r.error.code ? ' [' + r.error.code + ']' : '') + '  (' + ms + ' ms)');
+      else add('✓ ' + label + ' — ' + ((r && r.info) || 'ok') + '  (' + ms + ' ms)'); return r;
+    }catch(e){ add('✗ ' + label + ' — ' + (e.message || e)); return {error:e}; } };
+  await test('Internet → Supabase', async () => { try{ const r = await fetch(c.url + '/auth/v1/health', {headers:{apikey:c.key}}); return r.ok ? {info:'reachable'} : {error:{message:'HTTP ' + r.status + (r.status === 401 ? ' (bad/rotated anon key)' : r.status >= 500 ? ' (project paused or down — open the Supabase dashboard and restore it)' : '')}}; }catch(e){ return {error:{message:'unreachable — project paused, wrong URL, or blocked network'}}; } });
+  const ses = await test('Sign-in session', async () => { const {data, error} = await sb.auth.getSession(); return error ? {error} : data.session ? {info:data.session.user.email + ' · role ' + cloud.role} : {error:{message:'not signed in — sign in again'}}; });
+  if(ses.error) return;
+  for(const kind of ['orders','pack']){
+    const m = await test('datasets · latest ' + kind, async () => { const r = await fetchMeta(kind); if(r.error) return r; if(!r.data) return {error:{message:'none published'}};
+      const d = Math.floor((Date.now() - new Date(r.data.created_at)) / 86400000); r.info = r.data.file_name + ' · ' + r.data.row_count + ' rows · published ' + fmtDT(r.data.created_at) + (d >= 2 ? '  ⚠ ' + d + ' days old' : ''); return r; });
+    if(m.data) await test('datasets · download ' + kind + ' payload', async () => { const r = await fetchPayload(m.data.id); if(r.error) return r;
+      const rows = r.data.payload && r.data.payload.rows; return {info:(rows ? rows.length : 0) + ' rows' + (rows && rows.length !== m.data.row_count ? '  ⚠ expected ' + m.data.row_count : '') + ' · ' + Math.round(JSON.stringify(r.data.payload).length / 1024) + ' KB'}; });
+  }
+  await test('dispatches', async () => { const r = await sb.from('dispatches').select('id', {count:'exact', head:true}); return r.error ? r : {info:r.count + ' rows' + (r.count > 1000 ? '  ⚠ app loads only the newest 1000' : '')}; });
+  await test('settings', async () => { const r = await sb.from('settings').select('key,updated_at'); return r.error ? r : {info:(r.data || []).map(x => x.key).join(', ') || 'empty'}; });
+  await test('product master (cloud vs this browser)', async () => { const r = await sb.from('settings').select('value').eq('key','product_master').maybeSingle(); if(r.error) return r;
+    const n = r.data && r.data.value && r.data.value.items ? r.data.value.items.length : 0; return n ? {info:'cloud ' + n + ' · local ' + PM.size + (n !== PM.size ? '  ⚠ differ — press ⟳ Sync' : '')} : {error:{message:'cloud has NO product master — volumes will be 0 m³ for everyone'}}; });
+  await test('pack_master', async () => { const r = await sb.from('pack_master').select('updated_at').eq('key','pack_master').maybeSingle(); return r.error ? r : {info:r.data ? 'updated ' + fmtDT(r.data.updated_at) : 'empty'}; });
+  await test('profiles (your role)', async () => { const r = await sb.from('profiles').select('role,email').eq('id', cloud.user.id).maybeSingle(); return r.error ? r : {info:r.data ? r.data.role : 'no profile row'}; });
+  add('— done. Any ✗ line above is where the problem is. —'); console.log(L.join('\n'));
+}
+
 // ── admin: users + connection ──
 async function loadUsers(){
   const el = $('userList'); if(!cloud.on || !cloud.user){ el.innerHTML = '<div class="urow" style="color:var(--text3)">Connect Supabase to manage users.</div>'; return; }
@@ -3322,7 +3369,7 @@ async function provisionUser(){
 function saveConn(){
   const url = $('cnUrl').value.trim(), key = $('cnKey').value.trim();
   if(!/^https:\/\/.+/.test(url) || key.length < 20) return toast('Enter the project URL (https://…) and the anon key');
-  lsSet('lm_sb', {url, key}); toast('Connecting…'); bootCloud();
+  lsSet('lm_sb', {url, key, custom:true}); toast('Connecting…'); bootCloud();
 }
 function disconnectConn(){ lsSet('lm_sb', null); SB_CONFIG.url = ''; SB_CONFIG.anonKey = ''; $('loginBack').classList.remove('open'); cloud.viewAs = null; bootCloud(); toast('Local mode'); }
 
