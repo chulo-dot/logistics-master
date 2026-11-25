@@ -1044,6 +1044,20 @@ body{font-weight:400}
 .age-ok{background:rgba(111,185,174,.18);color:#3f9a8c}
 .age-warn{background:rgba(232,185,90,.2);color:#b9801a}
 .age-crit{background:rgba(229,144,127,.2);color:#d4614d}
+
+/* v22 · treemap colour scale */
+.tile[data-g]{border-radius:.55rem;color:#fff!important;text-shadow:0 .06rem .16rem rgba(0,0,0,.45)!important;
+  box-shadow:inset 0 0 0 .14rem var(--surface),inset 0 .2rem 0 .14rem rgba(255,255,255,.16),inset 0 -1.2rem 1.6rem -.6rem rgba(0,0,0,.18);transition:filter .14s,transform .14s}
+.tile[data-g]:hover{filter:brightness(1.12) saturate(1.08);transform:translateY(-1px);z-index:2}
+.tile[data-g] .tn{font-weight:750;letter-spacing:.005em}
+.tile[data-g] .tv{opacity:.9;font-weight:500}
+.tile[data-g].sel{box-shadow:inset 0 0 0 .14rem var(--surface),0 0 0 .16rem var(--amber)!important;outline:none}
+.tile.tile-others[data-others]{background:var(--surface3)!important;color:var(--text)!important;text-shadow:none!important;border:.12rem dashed var(--border2)!important;border-radius:.55rem}
+.st-legend .cl-lab{font-weight:700;color:var(--text)}
+.st-legend b{font-family:var(--mono);font-size:.64rem;font-weight:700;color:var(--text)}
+.st-legend .cl-bar{display:inline-block;flex:0 1 11rem;min-width:5rem;width:11rem;height:.55rem;border-radius:1rem;margin:0;vertical-align:middle;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.st-legend .cl-note{color:var(--text3);font-size:.6rem}
+.bar-row .bt i{border-radius:.3rem}
 </style>
 </head>
 <body>
@@ -1142,6 +1156,7 @@ body{font-weight:400}
             <div class="dtools">
               <div class="seg" role="group" aria-label="Group by"><button id="tmg-branch" class="on" onclick="setTmGroup('branch')">Branch</button><button id="tmg-shpt" onclick="setTmGroup('shpt')">Ship. point</button></div>
               <div class="seg" role="group" aria-label="Measure"><button id="tmm-orders" class="on" onclick="setTmMetric('orders')">Outbounds</button><button id="tmm-vol" onclick="setTmMetric('vol')">m³</button><button id="tmm-ctn" onclick="setTmMetric('ctn')">Cartons</button></div>
+              <div class="seg" role="group" aria-label="Colour by" title="What the tile colour shows"><button id="tmc-avg" class="on" onclick="setTmColor('avg')">Avg age</button><button id="tmc-crit" onclick="setTmColor('crit')">% critical</button><button id="tmc-old" onclick="setTmColor('old')">Oldest</button></div>
               <button class="btn btn-sm" id="tmExpand" onclick="tmToggleWide()" aria-expanded="false" title="Make the treemap full width and taller / back to normal">⤢ Expand</button>
             </div>
           </header>
@@ -2445,6 +2460,9 @@ function renderDaysGrid(){
 let tmSel = null, tmGroup = lsGet('lm_tm_g', 'branch'), tmMetric = lsGet('lm_tm_m', 'orders');
 if(!['branch','shpt'].includes(tmGroup)) tmGroup = 'branch';
 if(!['orders','vol','ctn'].includes(tmMetric)) tmMetric = 'orders';
+let tmColor = lsGet('lm_tm_c', 'avg'), tmLegendHtml = '';
+if(!['avg','crit','old'].includes(tmColor)) tmColor = 'avg';
+const CLBL = {avg:'average age', crit:'% critical', old:'oldest outbound'};
 const mVal = g => tmMetric === 'vol' ? g.vol : tmMetric === 'ctn' ? g.cartons : g.orders.length;
 const mFmt = v => tmMetric === 'vol' ? fmtM3(v) + ' m³' : fmt(Math.round(v)) + (tmMetric === 'ctn' ? ' ctn' : '');
 const MLBL = {orders:'outbounds', vol:'volume (m³)', ctn:'cartons'};
@@ -2452,17 +2470,41 @@ function dashGroups(grp){
   return groupBy(orders, o => grp === 'shpt' ? o.shpt : o.branch).map(g => ({...g, v:mVal(g)}))
     .sort((a, b) => b.v - a.v || String(a.key).localeCompare(String(b.key)));
 }
-const gTip = g => `${g.key}\n${g.orders.length} outbounds · ${fmtM3(g.vol)} m³ · ${fmt(g.cartons)} cartons · ${fmtKg(g.wt)} kg` + (g.days !== null ? ` · oldest ${g.days} d` : '');
+const gTip = g => { const st = grpStat(g); return `${g.key}\n${g.orders.length} outbounds · ${fmtM3(g.vol)} m³ · ${fmt(g.cartons)} cartons · ${fmtKg(g.wt)} kg` + (g.days !== null ? ` · oldest ${g.days} d` : '') + (st.avg !== null ? ` · avg ${st.avg.toFixed(1)} d · ${Math.round(st.crit)}% critical` : ''); };
 function setTmGroup(g){ tmGroup = g; tmSel = null; lsSet('lm_tm_g', g); renderDash(); }
 function setTmMetric(m){ tmMetric = m; lsSet('lm_tm_m', m); renderDash(); }
+function setTmColor(c){ tmColor = c; lsSet('lm_tm_c', c); renderDash(); }
+
+// ── colour scale: fresh (emerald) → amber → overdue (coral), stretched across the groups on screen so branches can be told apart ──
+function grpStat(g){ const d = g.orders.map(o => o.days).filter(x => x !== null && x !== undefined && !isNaN(x));
+  return {avg: d.length ? d.reduce((a, b) => a + b, 0) / d.length : null, crit: d.length ? d.filter(x => x >= TH.crit).length / d.length * 100 : null, old: g.days}; }
+const cFmt = v => v === null || v === undefined ? '—' : tmColor === 'crit' ? Math.round(v) + '%' : (tmColor === 'avg' ? v.toFixed(1) : Math.round(v)) + ' d';
+const SCALE = [[22,128,128],[46,156,108],[124,176,70],[214,166,46],[224,116,58],[196,62,84]];   // teal → green → leaf → gold → orange → rose (blended in RGB so mid-tones stay clean, never muddy/neon)
+function scaleCol(t){ t = Math.max(0, Math.min(1, t)); const x = t * (SCALE.length - 1), i = Math.min(SCALE.length - 2, Math.floor(x)), f = x - i, a = SCALE[i], b = SCALE[i + 1];
+  return {r:a[0] + (b[0] - a[0]) * f, g:a[1] + (b[1] - a[1]) * f, b:a[2] + (b[2] - a[2]) * f}; }
+const hslStr = (c, k = 0) => { const m = k >= 0 ? 255 : 0, w = Math.abs(k), q = v => Math.round(v + (m - v) * w); return `rgb(${q(c.r)},${q(c.g)},${q(c.b)})`; };   // k>0 lightens, k<0 darkens
+function colorGroups(gs, wantLegend){
+  const vals = gs.map(g => grpStat(g)[tmColor]), nums = vals.filter(v => v !== null), lo = Math.min(...nums), hi = Math.max(...nums), m = new Map();
+  const abs = v => tmColor === 'crit' ? v / 100 : v / Math.max(1, TH.crit);                       // fallback when every group has the same value
+  gs.forEach((g, i) => { const v = vals[i];
+    if(v === null){ m.set(String(g.key), {bg:'linear-gradient(145deg,hsl(215 16% 44%),hsl(215 16% 34%))', solid:'hsl(215 16% 40%)', v}); return; }
+    const t = hi > lo ? (v - lo) / (hi - lo) : abs(v), c = scaleCol(t);
+    m.set(String(g.key), {bg:`linear-gradient(145deg, ${hslStr(c, .10)}, ${hslStr(c, -.14)})`, solid:hslStr(c), v}); });
+  if(wantLegend){
+    const stops = [0, .17, .33, .5, .67, .83, 1].map(t => hslStr(scaleCol(t)) + ' ' + Math.round(t * 100) + '%').join(',');
+    tmLegendHtml = nums.length ? `<span class="cl-lab">Colour · ${CLBL[tmColor]}</span><b>${cFmt(lo)}</b><i class="cl-bar" style="background:linear-gradient(90deg,${stops})"></i><b>${cFmt(hi)}</b><span class="cl-note">lowest → highest of the ${nums.length} shown</span>` : '';
+  }
+  return m;
+}
 let tmWide = lsGet('lm_tm_x', '0') === '1';
 function applyTmWide(){ const g = $('dgrid'); if(!g) return; g.classList.toggle('tm-wide', tmWide); const b = $('tmExpand'); if(b){ b.textContent = tmWide ? '⤡ Collapse' : '⤢ Expand'; b.setAttribute('aria-expanded', tmWide); } }
 function tmToggleWide(){ tmWide = !tmWide; lsSet('lm_tm_x', tmWide ? '1' : '0'); applyTmWide(); requestAnimationFrame(() => { renderTreemap(); renderMap(); }); }
 function syncDashSeg(){ applyTmWide();
   ['branch','shpt'].forEach(k => { const b = $('tmg-' + k); if(b) b.classList.toggle('on', tmGroup === k); });
   ['orders','vol','ctn'].forEach(k => { const b = $('tmm-' + k); if(b) b.classList.toggle('on', tmMetric === k); });
+  ['avg','crit','old'].forEach(k => { const b = $('tmc-' + k); if(b) b.classList.toggle('on', tmColor === k); });
   const gl = tmGroup === 'shpt' ? 'shipping point' : 'branch';
-  if($('tmSub')) $('tmSub').textContent = 'by ' + gl + ' · size = ' + MLBL[tmMetric];
+  if($('tmSub')) $('tmSub').textContent = 'by ' + gl + ' · size = ' + MLBL[tmMetric] + ' · colour = ' + CLBL[tmColor];
 }
 function renderDash(){ syncDashSeg(); if(tmSel !== null && !orders.some(o => ((tmGroup === 'shpt' ? o.shpt : o.branch) || '—') === tmSel)) tmSel = null; renderTreemap(); renderBars(); renderMap(); }
 
@@ -2486,15 +2528,15 @@ function abbr(s){ s = String(s); const w = s.split(/[\s\-_/]+/).filter(Boolean);
 const TM_HUES = [212, 152, 28, 282, 346, 188, 96, 252, 18, 318, 58, 134];
 function renderTreemap(){
   const el = $('tmWrap'); if(!el) return;
-  if(!orders.length){ el.innerHTML = '<div class="empty-state"><div class="es-icon">▦</div><div class="es-sub">Run the engine to see the distribution</div></div>'; $('tmSum').textContent = ''; return; }
+  if(!orders.length){ tmLegendHtml = ''; el.innerHTML = '<div class="empty-state"><div class="es-icon">▦</div><div class="es-sub">Run the engine to see the distribution</div></div>'; $('tmSum').textContent = ''; return; }
   const all = dashGroups(tmGroup), gs = all.filter(g => g.v > 0), r = el.getBoundingClientRect(), W = r.width, H = r.height;
   $('tmSum').textContent = fmt(all.length) + ' ' + (tmGroup === 'shpt' ? 'shipping points' : 'branches');
   if(!gs.length){ el.innerHTML = '<div class="empty-state"><div class="es-sub">Nothing to show for this measure</div></div>'; return; }
   if(W < 10 || H < 10) return;
-  const max = gs[0].v, names = all.map(g => String(g.key)).sort(), rects = squarify(gs, 0, 0, W, H);
+  const max = gs[0].v, names = all.map(g => String(g.key)).sort(), rects = squarify(gs, 0, 0, W, H), cmap = colorGroups(gs, true);
   el.innerHTML = rects.map(t => {
     const g = t.it, rel = Math.sqrt(g.v / max), hue = TM_HUES[names.indexOf(String(g.key)) % TM_HUES.length];
-    const col = `hsl(${hue} ${46 + 24 * rel}% ${43 - 9 * rel}%)`, iw = t.w - 20, ih = t.h - 16;
+    const cm = cmap.get(String(g.key)), iw = t.w - 20, ih = t.h - 16;
     // font grows with the box: ~15% of the box's "diameter", between 7 and 24 px; shrinks / abbreviates until the name fits
     const fit = (txt, f) => txt.length * f * .6 <= iw * (ih > f * 4.2 ? 2 : 1);
     let name = String(g.key), fs = Math.max(7, Math.min(24, Math.sqrt(t.w * t.h) * .15));
@@ -2502,8 +2544,7 @@ function renderTreemap(){
     if(!fit(name, fs)){ name = abbr(name); fs = Math.min(fs, 14); while(fs > 7 && !fit(name, fs)) fs -= 1; if(!fit(name, fs)) name = name.slice(0, Math.max(2, Math.floor(iw / (fs * .6)))); }
     const showN = iw > fs * 1.2 && ih > fs + 2, vfs = Math.max(7, fs * .78), showV = showN && ih > fs * 1.15 + vfs + 6 && iw > vfs * 3;
     const on = tmSel === String(g.key), dim = tmSel !== null && !on;
-    return `<button class="tile ${on ? 'sel' : ''} ${dim ? 'dim' : ''}" data-k="${enc(g.key)}" title="${esc(gTip(g))}\n(tap to show its ${tmGroup === 'branch' ? 'shipping points' : 'branches'})" aria-pressed="${on}" style="left:${t.x / W * 100}%;top:${t.y / H * 100}%;width:${t.w / W * 100}%;height:${t.h / H * 100}%;background:${col}">` +
-      (g.days !== null && g.days >= TH.crit ? '<span class="tc" title="Has critical outbounds"></span>' : '') +
+    return `<button class="tile ${on ? 'sel' : ''} ${dim ? 'dim' : ''}" data-g="1" data-k="${enc(g.key)}" title="${esc(gTip(g))}\n(tap to show its ${tmGroup === 'branch' ? 'shipping points' : 'branches'})" aria-pressed="${on}" style="left:${t.x / W * 100}%;top:${t.y / H * 100}%;width:${t.w / W * 100}%;height:${t.h / H * 100}%;background:${cm.bg} !important">` +
       (showN ? `<span class="tn" style="font-size:${fs}px">${esc(name)}</span>` : '') + (showV ? `<span class="tv" style="font-size:${vfs}px">${esc(mFmt(g.v))}</span>` : '') + `</button>`;
   }).join('');
   if(all.length > gs.length) el.insertAdjacentHTML('beforeend', `<span class="tm-note">${all.length - gs.length} with 0 not shown</span>`);
@@ -2519,12 +2560,12 @@ function renderBars(){
   if(!orders.length){ $('ddSub').textContent = ''; $('ddAct').innerHTML = ''; el.innerHTML = '<div class="empty-state"><div class="es-icon">☰</div><div class="es-sub">Run the engine to see the breakdown</div></div>'; return; }
   const base = tmSel !== null ? orders.filter(o => ((tmGroup === 'shpt' ? o.shpt : o.branch) || '—') === tmSel) : orders;
   const gs = groupBy(base, o => otherShpt ? o.shpt : o.branch).map(g => ({...g, v:mVal(g)})).sort((a, b) => b.v - a.v || String(a.key).localeCompare(String(b.key)));
-  const max = Math.max(gs[0] ? gs[0].v : 0, 1);
+  const max = Math.max(gs[0] ? gs[0].v : 0, 1), cmb = colorGroups(gs, false);
   $('ddSub').textContent = tmSel !== null ? `${tmSel} · ${fmt(base.length)} open outbounds` : `all open outbounds · tap a ${grpLbl} in the treemap to narrow`;
   $('ddAct').innerHTML = tmSel !== null ? `<button class="btn btn-sm btn-primary" data-all="1">Open all</button><button class="btn btn-sm" data-clear="1" aria-label="Clear selection">✕</button>` : '';
   el.innerHTML = gs.map(g => `<button class="bar-row" data-k="${enc(g.key)}" title="${esc(gTip(g))}">
     <span class="bn">${esc(g.key)}<small>${fmt(g.orders.length)} ob · ${fmtM3(g.vol)} m³ · ${fmt(g.cartons)} ctn</small></span>
-    <span class="bt"><i style="width:${g.v ? Math.max(2, g.v / max * 100) : 0}%"></i></span>
+    <span class="bt"><i style="width:${g.v ? Math.max(2, g.v / max * 100) : 0}%;background:${cmb.get(String(g.key)).solid}"></i></span>
     <span class="bv">${esc(mFmt(g.v))}${g.days !== null ? ageChip(g.days) : ''}</span></button>`).join('');
 }
 function tmClick(e){ const el = e.target.closest('[data-k]'); if(!el) return; const k = dec(el.dataset.k); tmSel = tmSel === k ? null : k; renderTreemap(); renderBars(); }
@@ -3815,7 +3856,7 @@ function psConfirmImport(){
   // 2 ─ status legend (reads live thresholds)
   const tmSec = $('tmSec'), lg = document.createElement('div'); lg.className = 'st-legend';
   if(tmSec && tmSec.querySelector('.dbody')) tmSec.insertBefore(lg, tmSec.querySelector('.dbody'));
-  const legend = () => lg.innerHTML = `<span><i style="background:var(--st-ok)"></i>&lt; ${TH.warn} days · on time</span><span><i style="background:var(--st-warn)"></i>${TH.warn}–${TH.crit - 1} days · warning</span><span><i style="background:var(--st-crit)"></i>≥ ${TH.crit} days · critical</span>`;
+  const legend = () => lg.innerHTML = (typeof tmLegendHtml === 'string' && tmLegendHtml) ? tmLegendHtml : `<span><i style="background:var(--st-ok)"></i>&lt; ${TH.warn} days · on time</span><span><i style="background:var(--st-warn)"></i>${TH.warn}–${TH.crit - 1} days · warning</span><span><i style="background:var(--st-crit)"></i>≥ ${TH.crit} days · critical</span>`;
   legend();
 
   // 3 ─ treemap: status colours, text fit, tiny tiles → "Others"
@@ -3823,7 +3864,7 @@ function psConfirmImport(){
     legend(); const tiles = [...el.querySelectorAll('.tile')]; if(!tiles.length) return;
     const R = el.getBoundingClientRect();
     tiles.forEach(t => { const s = sev(oldest(t)); t.classList.add('s-' + s); t.dataset.sev = s; t.setAttribute('aria-label', (t.title || '').split('\n')[0]);
-      const n = t.querySelector('.tn'); if(n){ let f = parseFloat(n.style.fontSize) || 12, i = 0; while(n.scrollHeight > n.clientHeight + 1 && f > 8 && i++ < 8) n.style.fontSize = (f -= 1) + 'px'; } });
+      const n = t.querySelector('.tn'); if(n){ let f = parseFloat(n.style.fontSize) || 12, i = 0; while((n.scrollHeight > n.clientHeight + 1 || n.scrollWidth > n.clientWidth + 1) && f > 7 && i++ < 12) n.style.fontSize = (f -= 1) + 'px'; } });
     const tiny = tiles.filter(t => { if(t.classList.contains('sel')) return false; const b = t.getBoundingClientRect(); return b.width * b.height < 3600 || b.width < 46 || b.height < 30; });
     if(tiny.length < 2) return;
     let x0 = 1e9, y0 = 1e9, x1 = 0, y1 = 0;
