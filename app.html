@@ -1058,6 +1058,70 @@ body{font-weight:400}
 .st-legend .cl-bar{display:inline-block;flex:0 1 11rem;min-width:5rem;width:11rem;height:.55rem;border-radius:1rem;margin:0;vertical-align:middle;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
 .st-legend .cl-note{color:var(--text3);font-size:.6rem}
 .bar-row .bt i{border-radius:.3rem}
+
+/* v23 · Aging Analysis */
+:root{--ag-ok:#2e9c6c;--ag-warn:#d6a62e;--ag-crit:#c43e54;--ag-bad:#7b8aa0}
+.ag-ok{--c:var(--ag-ok)}.ag-warn{--c:var(--ag-warn)}.ag-crit{--c:var(--ag-crit)}.ag-bad{--c:var(--ag-bad)}
+.age-chip{display:inline-flex;align-items:center;gap:.4rem;padding:.14rem .62rem .14rem .5rem;border-radius:999px;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.3;
+  background:color-mix(in srgb,var(--c,var(--text3)) 16%,transparent);color:color-mix(in srgb,var(--c,var(--text3)) 60%,var(--text));border:1px solid color-mix(in srgb,var(--c,var(--text3)) 30%,transparent)}
+.age-chip::before{content:'';width:.4rem;height:.4rem;border-radius:50%;background:var(--c,var(--text3));flex:none}
+.age-ok{--c:var(--ag-ok)}.age-warn{--c:var(--ag-warn)}.age-crit{--c:var(--ag-crit)}
+#v-days .ag-head{display:flex;align-items:flex-end;justify-content:space-between;gap:.8rem;flex-wrap:wrap;margin:0 0 .9rem}
+.ag-ttl h2{margin:0;font-size:1.3rem;font-weight:750;letter-spacing:-.015em;color:var(--text)}
+.ag-ttl p{margin:.2rem 0 0;font-size:.8rem;color:var(--text2)}.ag-ttl p span{color:var(--text3)}
+.ag-legend{display:flex;gap:.4rem;flex-wrap:wrap}
+.ag-pill{display:inline-flex;align-items:center;gap:.4rem;padding:.22rem .7rem .22rem .6rem;border-radius:999px;font-size:.72rem;font-weight:600;
+  background:color-mix(in srgb,var(--c) 14%,transparent);color:color-mix(in srgb,var(--c) 60%,var(--text));border:1px solid color-mix(in srgb,var(--c) 28%,transparent)}
+.ag-pill::before{content:'';width:.45rem;height:.45rem;border-radius:50%;background:var(--c)}
+/* filters */
+#v-days #agFilters.fpanel.open{grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));gap:.8rem 1rem;padding:.8rem 1rem 1rem;border-radius:12px;align-items:start}
+@media (min-width:72em){#v-days #agFilters.fpanel.open{grid-template-columns:repeat(5,minmax(0,1fr))}}
+#v-days #agFilters .fth .fl::before{content:'';display:inline-block;width:.45rem;height:.45rem;border-radius:50%;background:var(--ag-warn);margin-right:.4rem;vertical-align:.05rem}
+#v-days #agFilters .fth2 .fl::before{background:var(--ag-crit)}
+#v-days #agFilters .fth .finp{border-color:color-mix(in srgb,var(--ag-warn) 45%,var(--border2))}
+#v-days #agFilters .fth2 .finp{border-color:color-mix(in srgb,var(--ag-crit) 45%,var(--border2))}
+#v-days #agFilters>.btn{align-self:end;min-height:2.15rem}
+/* summary cards */
+#v-days #agingSummary{display:grid;grid-template-columns:repeat(auto-fit,minmax(10.5rem,1fr));gap:.75rem;background:none;border:0;border-radius:0;overflow:visible;margin:0 0 .8rem}
+.ag-k{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--card-b,var(--border));border-radius:12px;padding:.85rem 1rem .95rem;box-shadow:var(--card-sh)}
+.ag-k::before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:var(--c)}
+.ag-k::after{content:'';position:absolute;right:-1.6rem;top:-1.6rem;width:5rem;height:5rem;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--c) 22%,transparent),transparent)}
+.ag-k-top{display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1}
+.ag-k-tag{font-size:.66rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:color-mix(in srgb,var(--c) 65%,var(--text))}
+.ag-k-pct{font-size:.7rem;font-weight:600;color:var(--text2);font-variant-numeric:tabular-nums}
+.ag-k-val{font-size:2rem;font-weight:750;line-height:1.15;margin:.3rem 0 .05rem;font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--c) 82%,var(--text));position:relative;z-index:1}
+.ag-k-lab{font-size:.74rem;font-weight:600;color:var(--text);position:relative;z-index:1}
+.ag-k-sub{font-size:.7rem;color:var(--text3);margin-top:.1rem;position:relative;z-index:1}
+.ag-k-bar{display:block;height:4px;border-radius:9px;background:color-mix(in srgb,var(--text) 9%,transparent);margin-top:.7rem;overflow:hidden;position:relative;z-index:1}
+.ag-k-bar b{display:block;height:100%;border-radius:9px;background:var(--c)}
+/* stacked distribution */
+.ag-dist{margin:0 0 1.1rem}.ag-dist:empty{display:none}
+.ag-dist-cap{display:flex;justify-content:space-between;font-size:.68rem;font-weight:600;color:var(--text3);letter-spacing:.03em;margin:0 .15rem .35rem;text-transform:uppercase}
+.ag-dist-bar{display:flex;gap:2px;height:1.5rem;border-radius:999px;overflow:hidden}
+.ag-dist-bar span{background:var(--c);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.68rem;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.35);min-width:3px}
+/* shipping point summary */
+.days-card.days-merged{border-radius:12px;max-height:360px}
+.days-merged .days-card-head{display:flex;justify-content:space-between;align-items:center;padding:.65rem 1rem;font-size:.8rem;font-weight:650;position:static}
+.days-merged .days-table th{top:0}
+.ag-hint{font-size:.68rem;font-weight:500;color:var(--text3)}
+.days-merged .days-table th,.days-merged .days-table td{padding-left:1rem;padding-right:1rem}
+.days-table td.ag-cn{font-weight:700;color:var(--ag-ok)}.days-table td.ag-cn.has{color:color-mix(in srgb,var(--ag-crit) 75%,var(--text))}
+.ag-mix{display:inline-flex;width:7rem;height:.55rem;border-radius:999px;overflow:hidden;gap:2px;vertical-align:middle;background:color-mix(in srgb,var(--text) 8%,transparent)}
+.ag-mix i{background:var(--c);display:block}
+/* aging list */
+#agList .sec-head{margin:1.2rem 0 .6rem}#agList .sec-title{font-size:.95rem;font-weight:700}
+#agList .log-table-wrap{border-radius:12px}
+.ag-list tbody tr td:first-child{box-shadow:inset 3px 0 0 transparent}
+.ag-list tr.ag-r-crit td:first-child{box-shadow:inset 3px 0 0 var(--ag-crit)}
+.ag-list tr.ag-r-warn td:first-child{box-shadow:inset 3px 0 0 var(--ag-warn)}
+.ag-list tr.ag-r-bad td:first-child{box-shadow:inset 3px 0 0 var(--ag-bad)}
+.ag-days{display:flex;align-items:center;justify-content:flex-end;gap:.7rem}
+.ag-bar{display:block;width:5rem;height:.42rem;border-radius:999px;background:color-mix(in srgb,var(--text) 9%,transparent);overflow:hidden;flex:none}
+.ag-bar b{display:block;height:100%;border-radius:999px;background:var(--c)}
+.ag-chk{display:inline-flex;align-items:center;gap:.25rem;font-size:.72rem;font-weight:600;padding:.1rem .55rem;border-radius:999px}
+.ag-chk.ok{color:color-mix(in srgb,var(--ag-ok) 70%,var(--text));background:color-mix(in srgb,var(--ag-ok) 12%,transparent)}
+.ag-chk.bad{color:color-mix(in srgb,var(--ag-warn) 70%,var(--text));background:color-mix(in srgb,var(--ag-warn) 14%,transparent)}
+@media (max-width:40em){.ag-k-val{font-size:1.6rem}.ag-bar{width:3rem}.ag-mix{width:4.5rem}}
 </style>
 </head>
 <body>
@@ -1177,9 +1241,9 @@ body{font-weight:400}
 
   <!-- ═══ AGING ═══ -->
   <div class="view" id="v-days">
-    <div class="sec-head">
-      <span class="sec-title">Aging Analysis — days at shipping point (Today − Mat.Av.Dt.)</span>
-      <div style="display:flex;gap:6px"><span class="badge badge-green" id="agL1">≤7 days</span><span class="badge badge-amber" id="agL2">8–14 days</span><span class="badge badge-red" id="agL3">15+ days (critical)</span></div>
+    <div class="ag-head">
+      <div class="ag-ttl"><h2>Aging Analysis</h2><p>Days at shipping point <span>· Today − Mat.Av.Dt.</span></p></div>
+      <div class="ag-legend"><span class="ag-pill ag-ok" id="agL1">≤7 days</span><span class="ag-pill ag-warn" id="agL2">8–14 days</span><span class="ag-pill ag-crit" id="agL3">15+ days (critical)</span></div>
     </div>
     <div class="fpanel open compact" id="agFilters">
       <div class="fg"><span class="fl">Branch</span><select class="fsel" id="agBranch" onchange="renderDaysGrid()"><option value="">All</option></select></div>
@@ -1189,11 +1253,12 @@ body{font-weight:400}
       <div class="fg"><span class="fl">to</span><input type="date" class="finp" id="agTo" onchange="renderDaysGrid()"></div>
       <div class="fg"><span class="fl">Min days</span><input type="number" min="0" class="finp num" id="agMin" onchange="renderDaysGrid()"></div>
       <div class="fg"><span class="fl">Max days</span><input type="number" min="0" class="finp num" id="agMax" onchange="renderDaysGrid()"></div>
-      <div class="fg"><span class="fl">Warning ≥ (days)</span><input type="number" min="1" class="finp num" id="agWarn" onchange="setTH()"></div>
-      <div class="fg"><span class="fl">Critical ≥ (days)</span><input type="number" min="2" class="finp num" id="agCrit" onchange="setTH()"></div>
+      <div class="fg fth"><span class="fl">Warning ≥ (days)</span><input type="number" min="1" class="finp num" id="agWarn" onchange="setTH()"></div>
+      <div class="fg fth fth2"><span class="fl">Critical ≥ (days)</span><input type="number" min="2" class="finp num" id="agCrit" onchange="setTH()"></div>
       <button class="btn btn-sm" style="color:var(--red)" onclick="clearAgFilters()">✕ Clear</button>
     </div>
-    <div class="kpi-row" id="agingSummary" style="grid-template-columns:repeat(4,1fr)"></div>
+    <div class="ag-sum" id="agingSummary"></div>
+    <div class="ag-dist" id="agDist"></div>
     <div class="days-grid" id="daysGrid"><div class="empty-state" style="grid-column:1/-1"><div class="es-icon">🕐</div><div class="es-title">No data yet</div><div class="es-sub">Waiting for the master dataset</div></div></div>
     <div id="agList"></div>
   </div>
@@ -2423,29 +2488,32 @@ function renderDaysGrid(){
   agView = list;
   const bk = {ok:{n:0,v:0}, warn:{n:0,v:0}, crit:{n:0,v:0}, bad:{n:0,v:0}};
   list.forEach(o => { const k = !dateValid(o) ? 'bad' : o.days >= TH.crit ? 'crit' : o.days >= TH.warn ? 'warn' : 'ok'; bk[k].n++; bk[k].v += o.vol; });
-  const card = (label, b, color) => `<div class="kpi-card"><div class="kpi-val" style="color:${color}">${b.n}</div><div class="kpi-label">${label}</div><div class="kpi-sub">${fmtM3(b.v)} m³</div></div>`;
-  $('agingSummary').innerHTML = card('≤ ' + (TH.warn-1) + ' days', bk.ok, 'var(--green)') + card(TH.warn + '–' + (TH.crit-1) + ' days', bk.warn, 'var(--amber)') +
-    card(TH.crit + '+ days (critical)', bk.crit, 'var(--red)') + card('Invalid / no date', bk.bad, 'var(--text3)');
+  const tot = Math.max(1, list.length);
+  const LBL = {ok:'≤ ' + (TH.warn-1) + ' days', warn:TH.warn + '–' + (TH.crit-1) + ' days', crit:TH.crit + '+ days (critical)', bad:'Invalid / no date'}, TAG = {ok:'On time', warn:'Warning', crit:'Critical', bad:'Check dates'};
+  const card = k => { const b = bk[k], pc = b.n / tot * 100; return `<div class="ag-k ag-${k}"><div class="ag-k-top"><span class="ag-k-tag">${TAG[k]}</span><span class="ag-k-pct">${pc.toFixed(pc < 10 && pc > 0 ? 1 : 0)}%</span></div><div class="ag-k-val">${fmt(b.n)}</div><div class="ag-k-lab">${LBL[k]}</div><div class="ag-k-sub">${fmtM3(b.v)} m³</div><i class="ag-k-bar"><b style="width:${pc}%"></b></i></div>`; };
+  $('agingSummary').innerHTML = ['ok','warn','crit','bad'].map(card).join('');
+  $('agDist').innerHTML = list.length ? `<div class="ag-dist-cap"><span>Age distribution</span><span>${fmt(list.length)} outbounds</span></div><div class="ag-dist-bar" role="img" aria-label="Share of outbounds by age band">` +
+    ['ok','warn','crit','bad'].filter(k => bk[k].n).map(k => { const pc = bk[k].n / tot * 100; return `<span class="ag-${k}" style="flex:${bk[k].n}" title="${LBL[k]}: ${bk[k].n} (${pc.toFixed(1)}%)">${pc >= 7 ? Math.round(pc) + '%' : ''}</span>`; }).join('') + `</div>` : '';
   const valid = list.filter(dateValid);
   const g = groupBy(valid, o => o.shpt).sort((a,b) => b.days - a.days);
   if(!g.length){
     $('daysGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">🕐</div><div class="es-title">' + (orders.length ? 'No records match these filters' : 'No aging data') + '</div><div class="es-sub">' + (orders.length ? 'Adjust or clear the filters above' : 'Mat.Av.Dt. column needed') + '</div></div>';
   } else {
-    const mid = Math.ceil(g.length / 2);
-    const tbl = rows => `<div class="days-card"><div class="days-card-head">Shipping Point Summary — click a row for details</div><table class="days-table">
-      <thead><tr><th>ShPt</th><th>Outbounds</th><th>m³</th><th>Avg Days</th><th>Max Days</th><th>Critical</th></tr></thead><tbody>
-      ${rows.map(x => { const ages = x.orders.map(o => o.days), avg = ages.reduce((a,b) => a+b, 0) / ages.length, crit = ages.filter(a => a >= TH.crit).length;
-        return `<tr data-s="${enc(x.key)}" style="cursor:pointer"><td>${esc(x.key)}</td><td>${x.orders.length}</td><td>${fmtM3(x.vol)}</td><td>${ageChip(Math.round(avg))}</td><td>${ageChip(x.days)}</td><td style="color:${crit?'var(--red)':'var(--green)'}">${crit}</td></tr>`; }).join('')}
+    const tbl = rows => `<div class="days-card days-merged"><div class="days-card-head"><span>Shipping Point Summary — click a row for details</span><span class="ag-hint">${rows.length} shipping point${rows.length === 1 ? '' : 's'}</span></div><table class="days-table">
+      <thead><tr><th>ShPt</th><th>Outbounds</th><th>m³</th><th>Avg Days</th><th>Max Days</th><th>Critical</th><th>Age mix</th></tr></thead><tbody>
+      ${rows.map(x => { const ages = x.orders.map(o => o.days), avg = ages.reduce((a,b) => a+b, 0) / ages.length, mix = {ok:0, warn:0, crit:0}; ages.forEach(a => mix[a >= TH.crit ? 'crit' : a >= TH.warn ? 'warn' : 'ok']++);
+        return `<tr data-s="${enc(x.key)}" style="cursor:pointer"><td>${esc(x.key)}</td><td>${x.orders.length}</td><td>${fmtM3(x.vol)}</td><td>${ageChip(Math.round(avg))}</td><td>${ageChip(x.days)}</td><td class="ag-cn ${mix.crit ? 'has' : ''}">${mix.crit}</td><td><span class="ag-mix" title="${mix.ok} on time · ${mix.warn} warning · ${mix.crit} critical">${['ok','warn','crit'].filter(k => mix[k]).map(k => `<i class="ag-${k}" style="flex:${mix[k]}"></i>`).join('')}</span></td></tr>`; }).join('')}
       </tbody></table></div>`;
-    $('daysGrid').innerHTML = tbl(g.slice(0, mid)) + tbl(g.slice(mid));
+    $('daysGrid').innerHTML = tbl(g);
   }
   const shown = list.slice().sort((a,b) => (b.days ?? -1) - (a.days ?? -1) || b.vol - a.vol).slice(0, 300);
   const why = o => o.minDate ? (o.days < 0 ? 'future date' : 'invalid') : 'missing';
+  const kOf = o => !dateValid(o) ? 'bad' : o.days >= TH.crit ? 'crit' : o.days >= TH.warn ? 'warn' : 'ok', maxD = Math.max(1, ...shown.map(o => dateValid(o) ? o.days : 0));
   $('agList').innerHTML = !list.length ? '' : `<div class="sec-head" style="margin-top:6px"><span class="sec-title">Aging list — ${fmt(list.length)} outbounds${list.length > shown.length ? ' (300 oldest shown)' : ''} <span style="color:var(--text3);font-weight:500">· click a row for its lines</span></span>
     <button class="btn btn-sm" onclick="exportAging()">↓ Export list</button></div>
-    <div class="log-table-wrap" style="max-height:460px"><table class="log-table"><thead><tr><th>Outbound</th><th>Branch</th><th>ShPt</th><th>Mat.Av.Dt</th><th class="r">Days</th><th>Date check</th><th class="r">m³</th><th class="r">Kg</th></tr></thead><tbody>
-    ${shown.map(o => `<tr data-o="${enc(o.id)}" style="cursor:pointer"><td><span class="od-id">${esc(o.id)}</span></td><td class="sans">${esc(o.branch)}</td><td>${esc(o.shpt)}</td><td>${fmtDate(o.minDate)}</td>
-      <td class="r">${dateValid(o) ? ageChip(o.days) : '<span class="age-chip">—</span>'}</td><td>${dateValid(o) ? '<span style="color:var(--green)">✓ valid</span>' : '<span style="color:var(--amber)">⚠ ' + why(o) + '</span>'}</td><td class="r">${fmtM3(o.vol)}</td><td class="r">${fmtKg(o.wt)}</td></tr>`).join('')}
+    <div class="log-table-wrap" style="max-height:460px"><table class="log-table ag-list"><thead><tr><th>Outbound</th><th>Branch</th><th>ShPt</th><th>Mat.Av.Dt</th><th class="r">Days</th><th>Date check</th><th class="r">m³</th><th class="r">Kg</th></tr></thead><tbody>
+    ${shown.map(o => { const k = kOf(o); return `<tr class="ag-r-${k}" data-o="${enc(o.id)}" style="cursor:pointer"><td><span class="od-id">${esc(o.id)}</span></td><td class="sans">${esc(o.branch)}</td><td>${esc(o.shpt)}</td><td>${fmtDate(o.minDate)}</td>
+      <td class="r">${dateValid(o) ? `<div class="ag-days">${ageChip(o.days)}<i class="ag-bar ag-${k}"><b style="width:${Math.max(4, o.days / maxD * 100)}%"></b></i></div>` : '<span class="age-chip">—</span>'}</td><td>${dateValid(o) ? '<span class="ag-chk ok">✓ valid</span>' : '<span class="ag-chk bad">⚠ ' + why(o) + '</span>'}</td><td class="r">${fmtM3(o.vol)}</td><td class="r">${fmtKg(o.wt)}</td></tr>`; }).join('')}
     </tbody></table></div>`;
 }
 
